@@ -21,22 +21,82 @@
       .sort(() => Math.random() - 0.5);
   }
 
-  let gameMode = $state<GameMode>('menu');
-  let cards = $state<Card[]>(createCards());
+  const STORAGE_KEY = 'memory-game-state';
+
+  type SavedState = {
+    gameMode: GameMode;
+    cards: Card[];
+    currentPlayer: number;
+    scores: Record<number, number>;
+    gameOver: boolean;
+    winner: string;
+    moves: number;
+    aiMemory: [number, string][];
+  };
+
+  function loadState(): SavedState | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as SavedState;
+      if (!parsed.gameMode || !Array.isArray(parsed.cards)) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveState() {
+    if (gameMode === 'menu' || gameOver) return;
+    const state: SavedState = {
+      gameMode,
+      cards: cards.map((c) => ({ ...c, flipped: false })),
+      currentPlayer,
+      scores: { ...scores },
+      gameOver,
+      winner,
+      moves,
+      aiMemory: Array.from(aiMemory.entries()),
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      // ignore
+    }
+  }
+
+  function clearState() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  const saved = loadState();
+
+  let gameMode = $state<GameMode>(saved?.gameMode ?? 'menu');
+  let cards = $state<Card[]>(saved?.cards ?? createCards());
   let selectedCards = $state<Card[]>([]);
   let isChecking = $state(false);
 
-  let currentPlayer = $state(1);
-  let scores = $state<Record<number, number>>({ 1: 0, 2: 0 });
-  let gameOver = $state(false);
-  let winner = $state<string>('');
-  let moves = $state(0);
+  let currentPlayer = $state(saved?.currentPlayer ?? 1);
+  let scores = $state<Record<number, number>>(saved?.scores ?? { 1: 0, 2: 0 });
+  let gameOver = $state(saved?.gameOver ?? false);
+  let winner = $state<string>(saved?.winner ?? '');
+  let moves = $state(saved?.moves ?? 0);
 
   // Computer memory: map of card id -> emoji name for cards it has seen
-  let aiMemory = $state<Map<number, string>>(new Map());
+  let aiMemory = $state<Map<number, string>>(
+    saved ? new Map(saved.aiMemory) : new Map()
+  );
 
   let player1Label = $derived(gameMode === 'single' ? 'Du' : 'Spieler 1');
   let player2Label = $derived(gameMode === 'single' ? 'Computer' : 'Spieler 2');
+
+  // AI imperfection: chance to forget a card, chance to ignore a known match
+  const AI_FORGET_CHANCE = 0.2;
+  const AI_MISTAKE_CHANCE = 0.25;
 
   function startGame(mode: GameMode) {
     gameMode = mode;
@@ -49,10 +109,12 @@
     card.flipped = true;
     selectedCards = [...selectedCards, card];
 
-    // Computer learns every card that gets flipped
+    // Computer learns every card that gets flipped, but sometimes forgets
     if (gameMode === 'single') {
-      aiMemory.set(card.id, card.name);
-      aiMemory = new Map(aiMemory);
+      if (Math.random() > AI_FORGET_CHANCE) {
+        aiMemory.set(card.id, card.name);
+        aiMemory = new Map(aiMemory);
+      }
     }
 
     if (selectedCards.length === 2) {
@@ -116,13 +178,18 @@
       }
     }
 
+    // Sometimes the AI ignores a known pair and plays randomly (makes a mistake)
+    if (knownPair && Math.random() < AI_MISTAKE_CHANCE) {
+      knownPair = null;
+    }
+
     if (knownPair) {
       flipCard(knownPair[0]);
       setTimeout(() => flipCard(knownPair![1]), 450);
       return;
     }
 
-    // No known pair — flip an unknown card first to learn it
+    // No known pair (or chose to ignore one) — flip an unknown card first
     const unknownCards = unmatched.filter((c) => !aiMemory.has(c.id));
     const firstCard = unknownCards.length > 0
       ? unknownCards[Math.floor(Math.random() * unknownCards.length)]
@@ -136,7 +203,11 @@
     const knownMatch = firstEmoji
       ? remaining.find((c) => aiMemory.get(c.id) === firstEmoji)
       : undefined;
-    const secondCard = knownMatch ?? remaining[Math.floor(Math.random() * remaining.length)];
+    // Sometimes ignore a known match after first flip too
+    const useKnownMatch = knownMatch && Math.random() >= AI_MISTAKE_CHANCE;
+    const secondCard = useKnownMatch
+      ? knownMatch!
+      : remaining[Math.floor(Math.random() * remaining.length)];
 
     setTimeout(() => flipCard(secondCard), 450);
   }
@@ -151,6 +222,7 @@
     winner = '';
     moves = 0;
     aiMemory = new Map();
+    clearState();
   }
 
   function backToMenu() {
@@ -190,8 +262,28 @@
   $effect(() => {
     if (gameOver) {
       launchConfetti();
+      clearState();
     } else {
       confettiPieces = [];
+    }
+  });
+
+  // Persist game state to localStorage whenever it changes
+  $effect(() => {
+    saveState();
+  });
+
+  // If we restored a single-player game and it's the computer's turn, resume
+  $effect(() => {
+    if (
+      gameMode === 'single' &&
+      currentPlayer === 2 &&
+      !gameOver &&
+      !isChecking &&
+      selectedCards.length === 0
+    ) {
+      const timer = setTimeout(() => computerTurn(), 600);
+      return () => clearTimeout(timer);
     }
   });
 </script>
