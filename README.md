@@ -2,6 +2,13 @@
 
 This template should help get you started developing with Svelte and TypeScript in Vite.
 
+## Deployment to GitHub Pages
+
+The GitHub Actions workflow builds and deploys the app when changes are pushed to `main`.
+In the repository settings, open **Settings → Pages** and set the source to **GitHub Actions**.
+The Vite base path is derived from the repository name during the deployment build, so the app
+also works locally with `npm run dev`.
+
 ## Recommended IDE Setup
 
 [VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
