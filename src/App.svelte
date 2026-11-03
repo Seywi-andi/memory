@@ -8,6 +8,8 @@
 
   type GameMode = 'menu' | 'single' | 'multi';
   type Theme = 'dark' | 'light';
+  type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+  type MenuStep = 'mode' | 'difficulty';
 
   const baseEmojis = [
     '🍎', '🍌', '🍕', '🚀', '🐱', '🎸', '⚽', '📚',
@@ -15,8 +17,19 @@
     '⚡', '🍩', '👑', '🎲', '🌸', '🧩', '🎈', '🍍',
   ];
 
-  function createCards(): Card[] {
-    const duplicated = [...baseEmojis, ...baseEmojis];
+  const difficultyConfig: Record<Difficulty, {
+    pairs: number; cols: number; label: string; icon: string; desc: string;
+    aiForget: number; aiMistake: number; aiMisremember: number;
+  }> = {
+    easy:   { pairs: 8,  cols: 4, label: 'Leicht',   icon: '🌱', desc: '8 Paare',  aiForget: 0.5,  aiMistake: 0.4,  aiMisremember: 0.25 },
+    medium: { pairs: 12, cols: 6, label: 'Mittel',   icon: '⚡', desc: '12 Paare', aiForget: 0.35, aiMistake: 0.3,  aiMisremember: 0.2  },
+    hard:   { pairs: 18, cols: 6, label: 'Schwer',   icon: '🔥', desc: '18 Paare', aiForget: 0.25, aiMistake: 0.2,  aiMisremember: 0.15 },
+    expert: { pairs: 24, cols: 8, label: 'Experte', icon: '💀', desc: '24 Paare', aiForget: 0.15, aiMistake: 0.1,  aiMisremember: 0.1  },
+  };
+
+  function createCards(pairCount: number = 12): Card[] {
+    const selected = baseEmojis.slice(0, pairCount);
+    const duplicated = [...selected, ...selected];
     return duplicated
       .map((name, index) => ({ id: index, name, flipped: false, matched: false }))
       .sort(() => Math.random() - 0.5);
@@ -27,6 +40,7 @@
 
   type SavedState = {
     gameMode: GameMode;
+    difficulty: Difficulty;
     cards: Card[];
     currentPlayer: number;
     scores: Record<number, number>;
@@ -52,6 +66,7 @@
     if (gameMode === 'menu' || gameOver) return;
     const state: SavedState = {
       gameMode,
+      difficulty,
       cards: cards.map((c) => ({ ...c, flipped: false })),
       currentPlayer,
       scores: { ...scores },
@@ -88,7 +103,10 @@
   const saved = loadState();
 
   let gameMode = $state<GameMode>(saved?.gameMode ?? 'menu');
-  let cards = $state<Card[]>(saved?.cards ?? createCards());
+  let difficulty = $state<Difficulty>(saved?.difficulty ?? 'medium');
+  let menuStep = $state<MenuStep>('mode');
+  let pendingMode = $state<GameMode>('menu');
+  let cards = $state<Card[]>(saved?.cards ?? createCards(difficultyConfig[difficulty].pairs));
   let selectedCards = $state<Card[]>([]);
   let isChecking = $state(false);
 
@@ -117,15 +135,24 @@
   let player1Label = $derived(gameMode === 'single' ? 'Du' : 'Spieler 1');
   let player2Label = $derived(gameMode === 'single' ? 'Computer' : 'Spieler 2');
 
-  // AI imperfection: chance to forget a seen card, chance to misremember it,
-  // and chance to ignore a known match
-  const AI_FORGET_CHANCE = 0.35;
-  const AI_MISREMEMBER_CHANCE = 0.2;
-  const AI_MISTAKE_CHANCE = 0.3;
+  let aiForgetChance = $derived(difficultyConfig[difficulty].aiForget);
+  let aiMisrememberChance = $derived(difficultyConfig[difficulty].aiMisremember);
+  let aiMistakeChance = $derived(difficultyConfig[difficulty].aiMistake);
 
   function startGame(mode: GameMode) {
     gameMode = mode;
+    menuStep = 'mode';
     restartGame();
+  }
+
+  function selectMode(mode: GameMode) {
+    pendingMode = mode;
+    menuStep = 'difficulty';
+  }
+
+  function startWithDifficulty(d: Difficulty) {
+    difficulty = d;
+    startGame(pendingMode);
   }
 
   function flipCard(card: Card) {
@@ -137,10 +164,10 @@
     // Computer learns every card that gets flipped, but sometimes forgets or misremembers
     if (gameMode === 'single') {
       const roll = Math.random();
-      if (roll < AI_FORGET_CHANCE) {
+      if (roll < aiForgetChance) {
         // forget it entirely
-      } else if (roll < AI_FORGET_CHANCE + AI_MISREMEMBER_CHANCE) {
-        aiMemory.set(card.id, baseEmojis[Math.floor(Math.random() * baseEmojis.length)]);
+      } else if (roll < aiForgetChance + aiMisrememberChance) {
+        aiMemory.set(card.id, cards[Math.floor(Math.random() * cards.length)].name);
         aiMemory = new Map(aiMemory);
       } else {
         aiMemory.set(card.id, card.name);
@@ -192,7 +219,7 @@
     if (unmatched.length < 2) return;
 
     // Occasionally lose a random remembered card between turns
-    if (aiMemory.size > 0 && Math.random() < AI_FORGET_CHANCE) {
+    if (aiMemory.size > 0 && Math.random() < aiForgetChance) {
       const keys = Array.from(aiMemory.keys());
       aiMemory.delete(keys[Math.floor(Math.random() * keys.length)]);
       aiMemory = new Map(aiMemory);
@@ -217,7 +244,7 @@
     }
 
     // Sometimes the AI ignores a known pair and plays randomly (makes a mistake)
-    if (knownPair && Math.random() < AI_MISTAKE_CHANCE) {
+    if (knownPair && Math.random() < aiMistakeChance) {
       knownPair = null;
     }
 
@@ -242,7 +269,7 @@
       ? remaining.find((c) => aiMemory.get(c.id) === firstEmoji)
       : undefined;
     // Sometimes ignore a known match after first flip too
-    const useKnownMatch = knownMatch && Math.random() >= AI_MISTAKE_CHANCE;
+    const useKnownMatch = knownMatch && Math.random() >= aiMistakeChance;
     const secondCard = useKnownMatch
       ? knownMatch!
       : remaining[Math.floor(Math.random() * remaining.length)];
@@ -251,7 +278,7 @@
   }
 
   function restartGame() {
-    cards = createCards();
+    cards = createCards(difficultyConfig[difficulty].pairs);
     selectedCards = [];
     currentPlayer = 1;
     scores = { 1: 0, 2: 0 };
@@ -265,11 +292,14 @@
 
   function backToMenu() {
     gameMode = 'menu';
+    menuStep = 'mode';
     restartGame();
   }
 
   let matchedCount = $derived(cards.filter((c) => c.matched).length);
-  let totalPairs = baseEmojis.length;
+  let totalPairs = $derived(difficultyConfig[difficulty].pairs);
+  let gridCols = $derived(difficultyConfig[difficulty].cols);
+  let difficultyLabel = $derived(difficultyConfig[difficulty].label);
   let isComputerTurn = $derived(gameMode === 'single' && currentPlayer === 2 && !gameOver && !isChecking);
 
   const confettiEmojis = ['🎉', '🎊', '✨', '⭐', '🌟', '💫', '🏆', '🥳'];
@@ -344,19 +374,37 @@
       <p class="subtitle">Finde alle Paare</p>
     </header>
 
-    <div class="menu-cards">
-      <button class="menu-card single" onclick={() => startGame('single')}>
-        <div class="menu-icon">🤖</div>
-        <h2 class="menu-title">Einzelspieler</h2>
-        <p class="menu-desc">Spiele gegen den Computer</p>
-      </button>
+    {#if menuStep === 'mode'}
+      <div class="menu-cards">
+        <button class="menu-card single" onclick={() => selectMode('single')}>
+          <div class="menu-icon">🤖</div>
+          <h2 class="menu-title">Einzelspieler</h2>
+          <p class="menu-desc">Spiele gegen den Computer</p>
+        </button>
 
-      <button class="menu-card multi" onclick={() => startGame('multi')}>
-        <div class="menu-icon">👥</div>
-        <h2 class="menu-title">Mehrspieler</h2>
-        <p class="menu-desc">Spieler 1 gegen Spieler 2</p>
-      </button>
-    </div>
+        <button class="menu-card multi" onclick={() => selectMode('multi')}>
+          <div class="menu-icon">👥</div>
+          <h2 class="menu-title">Mehrspieler</h2>
+          <p class="menu-desc">Spieler 1 gegen Spieler 2</p>
+        </button>
+      </div>
+    {:else}
+      <div class="difficulty-section">
+        <div class="difficulty-header">
+          <button class="back-btn" onclick={() => menuStep = 'mode'} aria-label="Zurück">← Zurück</button>
+          <p class="difficulty-prompt">Schwierigkeit wählen</p>
+        </div>
+        <div class="difficulty-cards">
+          {#each Object.entries(difficultyConfig) as [key, cfg] (key)}
+            <button class="difficulty-card {key}" onclick={() => startWithDifficulty(key as Difficulty)}>
+              <div class="difficulty-icon">{cfg.icon}</div>
+              <h3 class="difficulty-title">{cfg.label}</h3>
+              <p class="difficulty-desc">{cfg.desc}</p>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
   </div>
 {:else}
   <div class="game-container" class:game-over-active={gameOver}>
@@ -410,7 +458,7 @@
 
     <header class="game-header">
       <h1 class="title">Memory</h1>
-      <p class="subtitle">{gameMode === 'single' ? 'Einzelspieler' : 'Mehrspieler'}</p>
+      <p class="subtitle">{gameMode === 'single' ? 'Einzelspieler' : 'Mehrspieler'} · {difficultyLabel}</p>
     </header>
 
     <div class="play-area">
@@ -469,7 +517,7 @@
         </button>
       </aside>
 
-      <div class="grid">
+      <div class="grid {difficulty}">
         {#each cards as card (card.id)}
           <button
             class="card"
@@ -776,6 +824,104 @@
     text-align: center;
   }
 
+  /* ── Difficulty Selection ── */
+  .difficulty-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .difficulty-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .back-btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .back-btn:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+    border-color: var(--border-hover);
+  }
+
+  .difficulty-prompt {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .difficulty-cards {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .difficulty-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 145px;
+    padding: 28px 20px;
+    border-radius: 18px;
+    background: var(--menu-card-bg);
+    border: 2px solid var(--border);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-card);
+  }
+
+  .difficulty-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+  }
+
+  .difficulty-card.easy:hover   { border-color: rgba(52, 211, 153, 0.45); box-shadow: 0 12px 36px rgba(52, 211, 153, 0.12); }
+  .difficulty-card.medium:hover { border-color: rgba(251, 191, 36, 0.45); box-shadow: 0 12px 36px rgba(251, 191, 36, 0.12); }
+  .difficulty-card.hard:hover   { border-color: rgba(249, 115, 22, 0.45); box-shadow: 0 12px 36px rgba(249, 115, 22, 0.12); }
+  .difficulty-card.expert:hover { border-color: rgba(248, 113, 113, 0.45); box-shadow: 0 12px 36px rgba(248, 113, 113, 0.12); }
+
+  .difficulty-icon {
+    font-size: 2.4rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .difficulty-card:hover .difficulty-icon {
+    transform: scale(1.15);
+  }
+
+  .difficulty-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+  }
+
+  .difficulty-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
   /* ── Game Container ── */
   .game-container {
     display: flex;
@@ -1012,13 +1158,20 @@
   /* ── Card Grid ── */
   .grid {
     display: grid;
-    grid-template-columns: repeat(6, 82px);
-    gap: 10px;
+    --card-size: 82px;
+    --gap: 10px;
+    grid-template-columns: repeat(var(--cols, 6), var(--card-size));
+    gap: var(--gap);
   }
 
+  .grid.easy   { --cols: 4; }
+  .grid.medium { --cols: 6; }
+  .grid.hard   { --cols: 6; --card-size: 68px; }
+  .grid.expert { --cols: 8; --card-size: 58px; }
+
   .card {
-    width: 82px;
-    height: 82px;
+    width: var(--card-size);
+    height: var(--card-size);
     cursor: pointer;
     border: none;
     border-radius: 14px;
@@ -1064,8 +1217,8 @@
   }
 
   .card-back-pattern {
-    width: 28px;
-    height: 28px;
+    width: calc(var(--card-size) * 0.34);
+    height: calc(var(--card-size) * 0.34);
     border-radius: 8px;
     border: 2px solid var(--pattern-stroke);
     background:
@@ -1092,7 +1245,7 @@
   }
 
   .emoji {
-    font-size: 2.2rem;
+    font-size: calc(var(--card-size) * 0.52);
     line-height: 1;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
   }
@@ -1368,23 +1521,12 @@
     }
 
     .grid {
-      grid-template-columns: repeat(6, 52px);
-      gap: 7px;
+      --card-size: 52px;
+      --gap: 7px;
     }
 
-    .card {
-      width: 52px;
-      height: 52px;
-    }
-
-    .emoji {
-      font-size: 1.4rem;
-    }
-
-    .card-back-pattern {
-      width: 18px;
-      height: 18px;
-    }
+    .grid.hard { --card-size: 46px; }
+    .grid.expert { --card-size: 40px; }
 
     .title {
       font-size: 1.8rem;
@@ -1406,17 +1548,11 @@
 
   @media (max-width: 380px) {
     .grid {
-      grid-template-columns: repeat(6, 44px);
-      gap: 5px;
+      --card-size: 40px;
+      --gap: 5px;
     }
 
-    .card {
-      width: 44px;
-      height: 44px;
-    }
-
-    .emoji {
-      font-size: 1.2rem;
-    }
+    .grid.hard { --card-size: 36px; }
+    .grid.expert { --card-size: 32px; }
   }
 </style>
