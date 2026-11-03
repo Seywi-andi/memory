@@ -390,16 +390,25 @@
       </div>
     {:else}
       <div class="difficulty-section">
-        <div class="difficulty-header">
-          <button class="back-btn" onclick={() => menuStep = 'mode'} aria-label="Zurück">← Zurück</button>
-          <p class="difficulty-prompt">Schwierigkeit wählen</p>
+        <div class="difficulty-top">
+          <button class="back-btn" onclick={() => menuStep = 'mode'} aria-label="Zurück">
+            <span class="back-arrow">←</span> Zurück
+          </button>
         </div>
+        <header class="difficulty-header">
+          <h2 class="difficulty-heading">Schwierigkeit wählen</h2>
+          <p class="difficulty-sub">Wie viele Paare traust du dir zu?</p>
+        </header>
         <div class="difficulty-cards">
           {#each Object.entries(difficultyConfig) as [key, cfg] (key)}
             <button class="difficulty-card {key}" onclick={() => startWithDifficulty(key as Difficulty)}>
+              <div class="difficulty-card-glow {key}"></div>
               <div class="difficulty-icon">{cfg.icon}</div>
               <h3 class="difficulty-title">{cfg.label}</h3>
               <p class="difficulty-desc">{cfg.desc}</p>
+              <div class="difficulty-bar">
+                <span class="difficulty-bar-fill {key}"></span>
+              </div>
             </button>
           {/each}
         </div>
@@ -829,18 +838,23 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 28px;
-    animation: fadeIn 0.3s ease;
+    gap: 0;
+    width: 100%;
+    max-width: 720px;
+    animation: fadeIn 0.35s ease;
   }
 
-  .difficulty-header {
+  .difficulty-top {
+    width: 100%;
     display: flex;
-    align-items: center;
-    gap: 16px;
+    justify-content: flex-start;
   }
 
   .back-btn {
-    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-muted);
@@ -851,75 +865,152 @@
     transition: all 0.2s ease;
   }
 
+  .back-arrow {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
   .back-btn:hover {
     color: var(--text-primary);
     background: var(--surface-hover);
     border-color: var(--border-hover);
+    transform: translateX(-3px);
   }
 
-  .difficulty-prompt {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-secondary);
+  .difficulty-header {
+    text-align: center;
+    margin: 28px 0 36px;
+  }
+
+  .difficulty-heading {
+    font-size: 1.6rem;
+    font-weight: 800;
     margin: 0;
-    letter-spacing: 0.5px;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+  }
+
+  .difficulty-sub {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin: 6px 0 0;
+    letter-spacing: 0.3px;
   }
 
   .difficulty-cards {
-    display: flex;
-    gap: 18px;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    width: 100%;
   }
 
   .difficulty-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    width: 145px;
-    padding: 28px 20px;
+    gap: 10px;
+    padding: 32px 16px 24px;
     border-radius: 18px;
     background: var(--menu-card-bg);
     border: 2px solid var(--border);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     color: var(--text-secondary);
     box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .difficulty-card-glow {
+    position: absolute;
+    top: -40%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120%;
+    height: 80%;
+    border-radius: 50%;
+    filter: blur(30px);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+  }
+
+  .difficulty-card-glow.easy   { background: rgba(52, 211, 153, 0.25); }
+  .difficulty-card-glow.medium { background: rgba(251, 191, 36, 0.25); }
+  .difficulty-card-glow.hard   { background: rgba(249, 115, 22, 0.25); }
+  .difficulty-card-glow.expert { background: rgba(248, 113, 113, 0.25); }
+
+  .difficulty-card:hover .difficulty-card-glow {
+    opacity: 1;
   }
 
   .difficulty-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+    transform: translateY(-8px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
   }
 
-  .difficulty-card.easy:hover   { border-color: rgba(52, 211, 153, 0.45); box-shadow: 0 12px 36px rgba(52, 211, 153, 0.12); }
-  .difficulty-card.medium:hover { border-color: rgba(251, 191, 36, 0.45); box-shadow: 0 12px 36px rgba(251, 191, 36, 0.12); }
-  .difficulty-card.hard:hover   { border-color: rgba(249, 115, 22, 0.45); box-shadow: 0 12px 36px rgba(249, 115, 22, 0.12); }
-  .difficulty-card.expert:hover { border-color: rgba(248, 113, 113, 0.45); box-shadow: 0 12px 36px rgba(248, 113, 113, 0.12); }
+  .difficulty-card.easy:hover   { border-color: rgba(52, 211, 153, 0.5); }
+  .difficulty-card.medium:hover { border-color: rgba(251, 191, 36, 0.5); }
+  .difficulty-card.hard:hover   { border-color: rgba(249, 115, 22, 0.5); }
+  .difficulty-card.expert:hover { border-color: rgba(248, 113, 113, 0.5); }
 
   .difficulty-icon {
-    font-size: 2.4rem;
+    font-size: 2.6rem;
     line-height: 1;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    z-index: 1;
   }
 
   .difficulty-card:hover .difficulty-icon {
-    transform: scale(1.15);
+    transform: scale(1.2) translateY(-3px);
   }
 
   .difficulty-title {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 700;
     margin: 0;
     color: var(--text-primary);
+    position: relative;
+    z-index: 1;
   }
 
   .difficulty-desc {
     font-size: 0.78rem;
     color: var(--text-muted);
     margin: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .difficulty-bar {
+    width: 60%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    margin-top: 4px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+
+  .difficulty-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .difficulty-bar-fill.easy   { width: 25%; background: linear-gradient(90deg, #34d399, #6ee7b7); }
+  .difficulty-bar-fill.medium { width: 50%; background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+  .difficulty-bar-fill.hard   { width: 75%; background: linear-gradient(90deg, #f97316, #ea580c); }
+  .difficulty-bar-fill.expert { width: 100%; background: linear-gradient(90deg, #f87171, #ef4444); }
+
+  @media (max-width: 600px) {
+    .difficulty-cards {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
 
   /* ── Game Container ── */
