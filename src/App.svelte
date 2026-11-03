@@ -547,15 +547,17 @@
     <div class="play-area">
       <aside class="sidebar">
         <div class="scoreboard">
-          <div class="player" class:active={currentPlayer === 1 && !gameOver}>
+          <div class="player" class:active={currentPlayer === 1 && !gameOver} class:leading={scores[1] > scores[2]}>
             <div class="player-avatar p1">{gameMode === 'single' ? '👤' : '1'}</div>
+            {#if scores[1] > scores[2]}<span class="crown" aria-hidden="true">👑</span>{/if}
             <div class="player-info">
               <span class="player-label">{player1Label}</span>
               <span class="player-score">{scores[1]}</span>
             </div>
           </div>
-          <div class="player" class:active={currentPlayer === 2 && !gameOver}>
+          <div class="player" class:active={currentPlayer === 2 && !gameOver} class:leading={scores[2] > scores[1]}>
             <div class="player-avatar p2">{gameMode === 'single' ? '🤖' : '2'}</div>
+            {#if scores[2] > scores[1]}<span class="crown" aria-hidden="true">👑</span>{/if}
             <div class="player-info">
               <span class="player-label">{player2Label}</span>
               <span class="player-score">{scores[2]}</span>
@@ -1180,6 +1182,7 @@
   }
 
   .player {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -1223,6 +1226,27 @@
   .player.active .player-avatar {
     transform: scale(1.1);
     box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+  }
+
+  .player.leading {
+    border-color: rgba(251, 191, 36, 0.45);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.1);
+  }
+
+  .crown {
+    position: absolute;
+    top: -10px;
+    right: -6px;
+    font-size: 1.1rem;
+    line-height: 1;
+    animation: crownFloat 2s ease-in-out infinite;
+    filter: drop-shadow(0 2px 4px rgba(251, 191, 36, 0.4));
+    pointer-events: none;
+  }
+
+  @keyframes crownFloat {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-3px) rotate(5deg); }
   }
 
   .player-info {
