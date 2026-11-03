@@ -10,14 +10,16 @@
   type Theme = 'dark' | 'light';
   type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
   type MenuStep = 'mode' | 'difficulty';
-  type CardStyle = 'classic' | 'dots' | 'waves' | 'stripes';
+  type CardStyle = 'classic' | 'dots' | 'waves' | 'stripes' | 'grid' | 'swirl';
 
-  const cardStyleOrder: CardStyle[] = ['classic', 'dots', 'waves', 'stripes'];
+  const cardStyleOrder: CardStyle[] = ['classic', 'dots', 'waves', 'stripes', 'grid', 'swirl'];
   const cardStyleLabels: Record<CardStyle, string> = {
     classic: 'Klassisch',
     dots: 'Punkte',
     waves: 'Wellen',
     stripes: 'Streifen',
+    grid: 'Gitter',
+    swirl: 'Spirale',
   };
 
   const baseEmojis = [
@@ -389,15 +391,15 @@
 
 <div class="app" data-card-style={cardStyle} class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'}>
   <div class="toggle-group">
-    <button class="style-toggle" onclick={toggleCardStyle} aria-label="Kartendesign umschalten" title="Kartendesign: {cardStyleLabels[cardStyle]}">
-      <span class="style-toggle-inner">🎴</span>
-      <span class="style-toggle-label">{cardStyleLabels[cardStyle]}</span>
-    </button>
     <button class="theme-toggle" onclick={toggleTheme} aria-label="Design umschalten" title="Design umschalten">
       <span class="theme-icon" class:show-sun={theme === 'dark'}>
         <span class="icon-sun">☀️</span>
         <span class="icon-moon">🌙</span>
       </span>
+    </button>
+    <button class="style-toggle" onclick={toggleCardStyle} aria-label="Kartendesign umschalten" title="Kartendesign: {cardStyleLabels[cardStyle]}">
+      <span class="style-toggle-inner">🎴</span>
+      <span class="style-toggle-label">{cardStyleLabels[cardStyle]}</span>
     </button>
   </div>
 
@@ -710,8 +712,9 @@
     right: 18px;
     z-index: 300;
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    align-items: center;
+    align-items: flex-end;
   }
 
   .style-toggle {
@@ -1453,6 +1456,45 @@
       var(--pattern-blue) 13px,
       var(--pattern-blue) 15px
     );
+  }
+
+  /* ── Card Style: Grid ── */
+  .app[data-card-style='grid'] .card-back-pattern { display: none; }
+  .app[data-card-style='grid'] .card-back-overlay {
+    opacity: 1;
+    background-image:
+      linear-gradient(var(--pattern-green) 1px, transparent 1px),
+      linear-gradient(90deg, var(--pattern-green) 1px, transparent 1px),
+      linear-gradient(var(--pattern-blue) 1px, transparent 1px),
+      linear-gradient(90deg, var(--pattern-blue) 1px, transparent 1px);
+    background-size:
+      calc(var(--card-size) * 0.28) calc(var(--card-size) * 0.28),
+      calc(var(--card-size) * 0.28) calc(var(--card-size) * 0.28),
+      calc(var(--card-size) * 0.14) calc(var(--card-size) * 0.14),
+      calc(var(--card-size) * 0.14) calc(var(--card-size) * 0.14);
+    background-position: center;
+  }
+
+  /* ── Card Style: Swirl ── */
+  .app[data-card-style='swirl'] .card-back-pattern { display: none; }
+  .app[data-card-style='swirl'] .card-back-overlay {
+    opacity: 1;
+    background-image:
+      radial-gradient(circle at 50% 50%, var(--pattern-green) 0%, transparent 8%),
+      conic-gradient(
+        from 0deg,
+        var(--pattern-green) 0deg,
+        transparent 60deg,
+        var(--pattern-blue) 120deg,
+        transparent 180deg,
+        var(--pattern-green) 240deg,
+        transparent 300deg,
+        var(--pattern-blue) 360deg
+      );
+    background-size:
+      calc(var(--card-size) * 0.2) calc(var(--card-size) * 0.2),
+      100% 100%;
+    background-position: center;
   }
 
   .card:not(:disabled):hover .card-back {
