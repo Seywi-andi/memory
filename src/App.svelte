@@ -10,6 +10,15 @@
   type Theme = 'dark' | 'light';
   type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
   type MenuStep = 'mode' | 'difficulty';
+  type CardStyle = 'classic' | 'dots' | 'waves' | 'stripes';
+
+  const cardStyleOrder: CardStyle[] = ['classic', 'dots', 'waves', 'stripes'];
+  const cardStyleLabels: Record<CardStyle, string> = {
+    classic: 'Klassisch',
+    dots: 'Punkte',
+    waves: 'Wellen',
+    stripes: 'Streifen',
+  };
 
   const baseEmojis = [
     '🍎', '🍌', '🍕', '🚀', '🐱', '🎸', '⚽', '📚',
@@ -37,6 +46,7 @@
 
   const STORAGE_KEY = 'memory-game-state';
   const THEME_KEY = 'memory-game-theme';
+  const CARDSTYLE_KEY = 'memory-game-cardstyle';
 
   type SavedState = {
     gameMode: GameMode;
@@ -100,6 +110,16 @@
     return 'dark';
   }
 
+  function loadCardStyle(): CardStyle {
+    try {
+      const s = localStorage.getItem(CARDSTYLE_KEY) as CardStyle | null;
+      if (s && cardStyleOrder.includes(s)) return s;
+    } catch {
+      // ignore
+    }
+    return 'classic';
+  }
+
   const saved = loadState();
 
   let gameMode = $state<GameMode>(saved?.gameMode ?? 'menu');
@@ -117,11 +137,22 @@
   let moves = $state(saved?.moves ?? 0);
 
   let theme = $state<Theme>(loadTheme());
+  let cardStyle = $state<CardStyle>(loadCardStyle());
 
   function toggleTheme() {
     theme = theme === 'dark' ? 'light' : 'dark';
     try {
       localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // ignore
+    }
+  }
+
+  function toggleCardStyle() {
+    const idx = cardStyleOrder.indexOf(cardStyle);
+    cardStyle = cardStyleOrder[(idx + 1) % cardStyleOrder.length];
+    try {
+      localStorage.setItem(CARDSTYLE_KEY, cardStyle);
     } catch {
       // ignore
     }
@@ -356,13 +387,19 @@
   });
 </script>
 
-<div class="app" class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'}>
-  <button class="theme-toggle" onclick={toggleTheme} aria-label="Design umschalten" title="Design umschalten">
-    <span class="theme-icon" class:show-sun={theme === 'dark'}>
-      <span class="icon-sun">☀️</span>
-      <span class="icon-moon">🌙</span>
-    </span>
-  </button>
+<div class="app" data-card-style={cardStyle} class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'}>
+  <div class="toggle-group">
+    <button class="style-toggle" onclick={toggleCardStyle} aria-label="Kartendesign umschalten" title="Kartendesign: {cardStyleLabels[cardStyle]}">
+      <span class="style-toggle-inner">🎴</span>
+      <span class="style-toggle-label">{cardStyleLabels[cardStyle]}</span>
+    </button>
+    <button class="theme-toggle" onclick={toggleTheme} aria-label="Design umschalten" title="Design umschalten">
+      <span class="theme-icon" class:show-sun={theme === 'dark'}>
+        <span class="icon-sun">☀️</span>
+        <span class="icon-moon">🌙</span>
+      </span>
+    </button>
+  </div>
 
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
@@ -539,6 +576,7 @@
             <div class="card-inner">
               <div class="card-back">
                 <div class="card-back-pattern"></div>
+                <div class="card-back-overlay"></div>
               </div>
               <div class="card-front">
                 <span class="emoji">{card.name}</span>
@@ -665,12 +703,59 @@
     50% { transform: translate(40px, 30px); }
   }
 
-  /* ── Theme Toggle ── */
-  .theme-toggle {
+  /* ── Toggle Group ── */
+  .toggle-group {
     position: fixed;
     top: 18px;
     right: 18px;
     z-index: 300;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .style-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 44px;
+    padding: 0 14px 0 12px;
+    border-radius: 22px;
+    border: 1.5px solid var(--toggle-border);
+    background: var(--toggle-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit;
+  }
+
+  .style-toggle:hover {
+    transform: scale(1.05);
+    border-color: rgba(96, 165, 250, 0.4);
+    box-shadow: 0 4px 16px rgba(96, 165, 250, 0.12);
+  }
+
+  .style-toggle-inner {
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .style-toggle:hover .style-toggle-inner {
+    transform: rotate(15deg) scale(1.1);
+  }
+
+  .style-toggle-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  /* ── Theme Toggle ── */
+  .theme-toggle {
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -1318,6 +1403,58 @@
     transition: all 0.2s ease;
   }
 
+  .card-back-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    overflow: hidden;
+  }
+
+  /* ── Card Style: Dots ── */
+  .app[data-card-style='dots'] .card-back-pattern { display: none; }
+  .app[data-card-style='dots'] .card-back-overlay {
+    opacity: 1;
+    background-image: radial-gradient(circle, var(--pattern-green) 25%, transparent 26%);
+    background-size: calc(var(--card-size) * 0.24) calc(var(--card-size) * 0.24);
+    background-position: center;
+  }
+
+  /* ── Card Style: Waves ── */
+  .app[data-card-style='waves'] .card-back-pattern { display: none; }
+  .app[data-card-style='waves'] .card-back-overlay {
+    opacity: 1;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent 0,
+        transparent calc(var(--card-size) * 0.13),
+        var(--pattern-green) calc(var(--card-size) * 0.13),
+        var(--pattern-green) calc(var(--card-size) * 0.15),
+        transparent calc(var(--card-size) * 0.15),
+        transparent calc(var(--card-size) * 0.26)
+      );
+  }
+
+  /* ── Card Style: Stripes ── */
+  .app[data-card-style='stripes'] .card-back-pattern { display: none; }
+  .app[data-card-style='stripes'] .card-back-overlay {
+    opacity: 1;
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent 0,
+      transparent 5px,
+      var(--pattern-green) 5px,
+      var(--pattern-green) 7px,
+      transparent 7px,
+      transparent 13px,
+      var(--pattern-blue) 13px,
+      var(--pattern-blue) 15px
+    );
+  }
+
   .card:not(:disabled):hover .card-back {
     border-color: var(--card-hover-border);
     box-shadow: 0 6px 20px var(--card-glow);
@@ -1327,6 +1464,10 @@
   .card:not(:disabled):hover .card-back-pattern {
     border-color: rgba(110, 231, 183, 0.5);
     transform: scale(1.12);
+  }
+
+  .card:not(:disabled):hover .card-back-overlay {
+    filter: brightness(1.3);
   }
 
   .card-front {
