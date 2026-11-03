@@ -7,6 +7,7 @@
   };
 
   type GameMode = 'menu' | 'single' | 'multi';
+  type Theme = 'dark' | 'light';
 
   const baseEmojis = [
     '🍎', '🍌', '🍕', '🚀', '🐱', '🎸', '⚽', '📚',
@@ -22,6 +23,7 @@
   }
 
   const STORAGE_KEY = 'memory-game-state';
+  const THEME_KEY = 'memory-game-theme';
 
   type SavedState = {
     gameMode: GameMode;
@@ -73,6 +75,16 @@
     }
   }
 
+  function loadTheme(): Theme {
+    try {
+      const t = localStorage.getItem(THEME_KEY);
+      if (t === 'light' || t === 'dark') return t;
+    } catch {
+      // ignore
+    }
+    return 'dark';
+  }
+
   const saved = loadState();
 
   let gameMode = $state<GameMode>(saved?.gameMode ?? 'menu');
@@ -85,6 +97,17 @@
   let gameOver = $state(saved?.gameOver ?? false);
   let winner = $state<string>(saved?.winner ?? '');
   let moves = $state(saved?.moves ?? 0);
+
+  let theme = $state<Theme>(loadTheme());
+
+  function toggleTheme() {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // ignore
+    }
+  }
 
   // Computer memory: map of card id -> emoji name for cards it has seen
   let aiMemory = $state<Map<number, string>>(
@@ -303,6 +326,17 @@
   });
 </script>
 
+<div class="app" class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'}>
+  <button class="theme-toggle" onclick={toggleTheme} aria-label="Design umschalten" title="Design umschalten">
+    <span class="theme-icon" class:show-sun={theme === 'dark'}>
+      <span class="icon-sun">☀️</span>
+      <span class="icon-moon">🌙</span>
+    </span>
+  </button>
+
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
 {#if gameMode === 'menu'}
   <div class="menu-container">
     <header class="menu-header">
@@ -314,7 +348,7 @@
       <button class="menu-card single" onclick={() => startGame('single')}>
         <div class="menu-icon">🤖</div>
         <h2 class="menu-title">Einzelspieler</h2>
-        <p class="menu-desc">Spiele gegen den Computer<br><span class="menu-hint">Der Computer macht auch Fehler</span></p>
+        <p class="menu-desc">Spiele gegen den Computer</p>
       </button>
 
       <button class="menu-card multi" onclick={() => startGame('multi')}>
@@ -459,25 +493,198 @@
     </div>
   </div>
 {/if}
+</div>
 
 <style>
-  /* ── Shared ── */
+  /* ── Theme Variables ── */
+  .theme-dark {
+    --bg-top: #1a1c2e;
+    --bg-bottom: #0f1019;
+    --text-primary: #f0f1f8;
+    --text-secondary: #c2c5e0;
+    --text-muted: #8b90b0;
+    --text-dim: #6b7090;
+    --surface: rgba(255, 255, 255, 0.04);
+    --surface-2: rgba(255, 255, 255, 0.03);
+    --surface-hover: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.07);
+    --border-soft: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.14);
+    --card-back-bg: linear-gradient(145deg, #252840, #1a1c2e);
+    --card-back-border: rgba(255, 255, 255, 0.08);
+    --card-front-bg: linear-gradient(145deg, #2a2d48, #1e2138);
+    --menu-card-bg: linear-gradient(145deg, #1e2138, #161828);
+    --overlay-bg: rgba(15, 16, 25, 0.82);
+    --winner-card-bg: linear-gradient(145deg, #1e2138, #161828);
+    --winner-border: rgba(110, 231, 183, 0.25);
+    --winner-shadow: 0 0 60px rgba(110, 231, 183, 0.15), 0 20px 60px rgba(0, 0, 0, 0.5);
+    --title-gradient: linear-gradient(135deg, #6ee7b7 0%, #38bdf8 50%, #818cf8 100%);
+    --toggle-bg: rgba(255, 255, 255, 0.06);
+    --toggle-border: rgba(255, 255, 255, 0.1);
+    --pattern-stroke: rgba(110, 231, 183, 0.25);
+    --pattern-green: rgba(110, 231, 183, 0.12);
+    --pattern-blue: rgba(96, 165, 250, 0.12);
+    --card-front-border: rgba(110, 231, 183, 0.3);
+    --card-hover-border: rgba(110, 231, 183, 0.35);
+    --card-glow: rgba(110, 231, 183, 0.12);
+    --orb-1: rgba(110, 231, 183, 0.08);
+    --orb-2: rgba(96, 165, 250, 0.07);
+    --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.25);
+    --divider: rgba(255, 255, 255, 0.1);
+  }
+
+  .theme-light {
+    --bg-top: #eef0f7;
+    --bg-bottom: #dce0ec;
+    --text-primary: #1a1c2e;
+    --text-secondary: #3a3d52;
+    --text-muted: #6b7090;
+    --text-dim: #9499b0;
+    --surface: rgba(255, 255, 255, 0.65);
+    --surface-2: rgba(255, 255, 255, 0.5);
+    --surface-hover: rgba(255, 255, 255, 0.85);
+    --border: rgba(0, 0, 0, 0.08);
+    --border-soft: rgba(0, 0, 0, 0.06);
+    --border-hover: rgba(0, 0, 0, 0.16);
+    --card-back-bg: linear-gradient(145deg, #ffffff, #e6e9f2);
+    --card-back-border: rgba(0, 0, 0, 0.1);
+    --card-front-bg: linear-gradient(145deg, #ffffff, #eef1f8);
+    --menu-card-bg: linear-gradient(145deg, #ffffff, #eef1f8);
+    --overlay-bg: rgba(200, 206, 222, 0.82);
+    --winner-card-bg: linear-gradient(145deg, #ffffff, #eef1f8);
+    --winner-border: rgba(52, 211, 153, 0.3);
+    --winner-shadow: 0 0 60px rgba(52, 211, 153, 0.12), 0 20px 60px rgba(0, 0, 0, 0.12);
+    --title-gradient: linear-gradient(135deg, #059669 0%, #2563eb 50%, #4f46e5 100%);
+    --toggle-bg: rgba(255, 255, 255, 0.7);
+    --toggle-border: rgba(0, 0, 0, 0.1);
+    --pattern-stroke: rgba(52, 211, 153, 0.35);
+    --pattern-green: rgba(52, 211, 153, 0.12);
+    --pattern-blue: rgba(96, 165, 250, 0.12);
+    --card-front-border: rgba(52, 211, 153, 0.4);
+    --card-hover-border: rgba(52, 211, 153, 0.45);
+    --card-glow: rgba(52, 211, 153, 0.1);
+    --orb-1: rgba(52, 211, 153, 0.1);
+    --orb-2: rgba(96, 165, 250, 0.09);
+    --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+    --divider: rgba(0, 0, 0, 0.1);
+  }
+
+  /* ── App Shell ── */
+  .app {
+    position: relative;
+    min-height: 100svh;
+    background: radial-gradient(ellipse at top, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    transition: background 0.4s ease;
+  }
+
+  .bg-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+    animation: orbFloat 20s ease-in-out infinite;
+  }
+
+  .orb-1 {
+    width: 400px;
+    height: 400px;
+    top: -100px;
+    left: -100px;
+    background: var(--orb-1);
+  }
+
+  .orb-2 {
+    width: 350px;
+    height: 350px;
+    bottom: -100px;
+    right: -80px;
+    background: var(--orb-2);
+    animation-delay: -10s;
+  }
+
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(40px, 30px); }
+  }
+
+  /* ── Theme Toggle ── */
+  .theme-toggle {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 300;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid var(--toggle-border);
+    background: var(--toggle-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .theme-toggle:hover {
+    transform: scale(1.1);
+    border-color: rgba(110, 231, 183, 0.4);
+    box-shadow: 0 4px 16px var(--card-glow);
+  }
+
+  .theme-icon {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+
+  .icon-sun, .icon-moon {
+    position: absolute;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .theme-icon.show-sun .icon-sun {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+  .theme-icon.show-sun .icon-moon {
+    opacity: 0;
+    transform: rotate(180deg) scale(0);
+  }
+
+  .theme-icon:not(.show-sun) .icon-sun {
+    opacity: 0;
+    transform: rotate(-180deg) scale(0);
+  }
+  .theme-icon:not(.show-sun) .icon-moon {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+
+  /* ── Shared Typography ── */
   .title {
     font-size: 2.2rem;
     font-weight: 800;
     margin: 0;
-    color: #f0f1f8;
     letter-spacing: -1px;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #6ee7b7 0%, #38bdf8 50%, #818cf8 100%);
+    background: var(--title-gradient);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    color: var(--text-primary);
   }
 
   .subtitle {
     font-size: 0.85rem;
-    color: #6b7090;
+    color: var(--text-dim);
     margin: 2px 0 0;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -493,8 +700,8 @@
     min-height: 100svh;
     box-sizing: border-box;
     padding: 24px;
-    background: radial-gradient(ellipse at top, #1a1c2e 0%, #0f1019 100%);
-    color: #e2e4f0;
+    position: relative;
+    z-index: 1;
   }
 
   .menu-header {
@@ -502,7 +709,7 @@
   }
 
   .menu-header .title {
-    font-size: 3rem;
+    font-size: 3.2rem;
   }
 
   .menu-cards {
@@ -516,58 +723,57 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    width: 240px;
-    padding: 36px 28px;
-    border-radius: 20px;
-    background: linear-gradient(145deg, #1e2138, #161828);
-    border: 1.5px solid rgba(255, 255, 255, 0.06);
+    gap: 10px;
+    width: 250px;
+    padding: 40px 28px;
+    border-radius: 22px;
+    background: var(--menu-card-bg);
+    border: 1.5px solid var(--border);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    color: #e2e4f0;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-card);
   }
 
   .menu-card:hover {
-    transform: translateY(-6px);
-    border-color: rgba(110, 231, 183, 0.3);
-    box-shadow: 0 12px 40px rgba(110, 231, 183, 0.1);
+    transform: translateY(-8px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
   }
 
   .menu-card.single:hover {
-    border-color: rgba(96, 165, 250, 0.35);
-    box-shadow: 0 12px 40px rgba(96, 165, 250, 0.12);
+    border-color: rgba(96, 165, 250, 0.4);
+    box-shadow: 0 16px 48px rgba(96, 165, 250, 0.15);
   }
 
   .menu-card.multi:hover {
-    border-color: rgba(110, 231, 183, 0.35);
-    box-shadow: 0 12px 40px rgba(110, 231, 183, 0.12);
+    border-color: rgba(110, 231, 183, 0.4);
+    box-shadow: 0 16px 48px rgba(110, 231, 183, 0.15);
   }
 
   .menu-icon {
-    font-size: 3rem;
+    font-size: 3.2rem;
     line-height: 1;
-    margin-bottom: 4px;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    margin-bottom: 6px;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .menu-card:hover .menu-icon {
+    transform: scale(1.15) translateY(-4px);
   }
 
   .menu-title {
-    font-size: 1.3rem;
+    font-size: 1.35rem;
     font-weight: 700;
     margin: 0;
-    color: #f0f1f8;
+    color: var(--text-primary);
   }
 
   .menu-desc {
     font-size: 0.88rem;
-    color: #8b90b0;
+    color: var(--text-muted);
     margin: 0;
     text-align: center;
-  }
-
-  .menu-hint {
-    font-size: 0.75rem;
-    color: #6b7090;
-    font-style: italic;
   }
 
   /* ── Game Container ── */
@@ -579,9 +785,8 @@
     padding: 28px 20px;
     min-height: 100svh;
     box-sizing: border-box;
-    background: radial-gradient(ellipse at top, #1a1c2e 0%, #0f1019 100%);
-    color: #e2e4f0;
     position: relative;
+    z-index: 1;
     overflow: hidden;
   }
 
@@ -620,15 +825,17 @@
     gap: 14px;
     padding: 14px 16px;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1.5px solid rgba(255, 255, 255, 0.06);
+    background: var(--surface);
+    border: 1.5px solid var(--border);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .player.active {
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--surface-hover);
     border-color: rgba(110, 231, 183, 0.4);
-    box-shadow: 0 0 20px rgba(110, 231, 183, 0.12);
+    box-shadow: 0 0 24px rgba(110, 231, 183, 0.12);
   }
 
   .player-avatar {
@@ -666,14 +873,14 @@
 
   .player-label {
     font-size: 0.78rem;
-    color: #8b90b0;
+    color: var(--text-muted);
     letter-spacing: 0.5px;
   }
 
   .player-score {
     font-size: 1.6rem;
     font-weight: 800;
-    color: #f0f1f8;
+    color: var(--text-primary);
     line-height: 1;
   }
 
@@ -690,20 +897,20 @@
     align-items: center;
     padding: 12px 8px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
   }
 
   .stat-value {
     font-size: 1.3rem;
     font-weight: 700;
-    color: #f0f1f8;
+    color: var(--text-primary);
     line-height: 1;
   }
 
   .stat-label {
     font-size: 0.72rem;
-    color: #6b7090;
+    color: var(--text-dim);
     margin-top: 4px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
@@ -713,8 +920,8 @@
   .status-box {
     padding: 14px 16px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
     text-align: center;
     min-height: 50px;
     display: flex;
@@ -727,7 +934,7 @@
     align-items: center;
     gap: 8px;
     font-size: 0.9rem;
-    color: #c2c5e0;
+    color: var(--text-secondary);
   }
 
   .turn-dot {
@@ -777,7 +984,7 @@
 
   .restart-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(110, 231, 183, 0.3);
+    box-shadow: 0 6px 20px rgba(110, 231, 183, 0.35);
   }
 
   .restart-btn:active {
@@ -788,9 +995,9 @@
     padding: 12px 24px;
     font-size: 0.88rem;
     font-weight: 600;
-    color: #c2c5e0;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1.5px solid var(--border);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -798,8 +1005,8 @@
   }
 
   .menu-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: var(--surface-hover);
+    border-color: var(--border-hover);
   }
 
   /* ── Card Grid ── */
@@ -850,47 +1057,49 @@
   }
 
   .card-back {
-    background: linear-gradient(145deg, #252840, #1a1c2e);
-    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    background: var(--card-back-bg);
+    border: 1.5px solid var(--card-back-border);
     transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   .card-back-pattern {
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    border: 2px solid rgba(110, 231, 183, 0.25);
+    border: 2px solid var(--pattern-stroke);
     background:
-      linear-gradient(45deg, transparent 46%, rgba(110, 231, 183, 0.12) 47%, rgba(110, 231, 183, 0.12) 53%, transparent 54%),
-      linear-gradient(-45deg, transparent 46%, rgba(96, 165, 250, 0.12) 47%, rgba(96, 165, 250, 0.12) 53%, transparent 54%);
+      linear-gradient(45deg, transparent 46%, var(--pattern-green) 47%, var(--pattern-green) 53%, transparent 54%),
+      linear-gradient(-45deg, transparent 46%, var(--pattern-blue) 47%, var(--pattern-blue) 53%, transparent 54%);
+    transition: all 0.2s ease;
   }
 
   .card:not(:disabled):hover .card-back {
-    border-color: rgba(110, 231, 183, 0.35);
-    box-shadow: 0 4px 16px rgba(110, 231, 183, 0.12);
+    border-color: var(--card-hover-border);
+    box-shadow: 0 6px 20px var(--card-glow);
+    transform: translateY(-2px);
   }
 
   .card:not(:disabled):hover .card-back-pattern {
-    border-color: rgba(110, 231, 183, 0.45);
-    transform: scale(1.1);
-    transition: transform 0.2s ease;
+    border-color: rgba(110, 231, 183, 0.5);
+    transform: scale(1.12);
   }
 
   .card-front {
-    background: linear-gradient(145deg, #2a2d48, #1e2138);
-    border: 1.5px solid rgba(110, 231, 183, 0.3);
+    background: var(--card-front-bg);
+    border: 1.5px solid var(--card-front-border);
     transform: rotateY(180deg);
   }
 
   .emoji {
     font-size: 2.2rem;
     line-height: 1;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
   }
 
   .card.matched .card-front {
     border-color: rgba(110, 231, 183, 0.6);
-    box-shadow: 0 0 16px rgba(110, 231, 183, 0.2);
+    box-shadow: 0 0 20px rgba(110, 231, 183, 0.25);
     animation: matchPop 0.4s ease;
   }
 
@@ -966,7 +1175,7 @@
   .winner-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 16, 25, 0.8);
+    background: var(--overlay-bg);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     display: flex;
@@ -987,11 +1196,11 @@
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    padding: 40px 48px;
+    padding: 44px 52px;
     border-radius: 24px;
-    background: linear-gradient(145deg, #1e2138, #161828);
-    border: 1.5px solid rgba(110, 231, 183, 0.25);
-    box-shadow: 0 0 60px rgba(110, 231, 183, 0.15), 0 20px 60px rgba(0, 0, 0, 0.5);
+    background: var(--winner-card-bg);
+    border: 1.5px solid var(--winner-border);
+    box-shadow: var(--winner-shadow);
     animation: winnerPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
@@ -1013,16 +1222,16 @@
   }
 
   .winner-title {
-    font-size: 1.8rem;
+    font-size: 1.85rem;
     font-weight: 800;
     margin: 8px 0 0;
-    color: #f0f1f8;
+    color: var(--text-primary);
     letter-spacing: -0.5px;
   }
 
   .winner-subtitle {
     font-size: 1rem;
-    color: #8b90b0;
+    color: var(--text-muted);
     margin: 0;
   }
 
@@ -1056,7 +1265,7 @@
 
   .winner-score-label {
     font-size: 0.75rem;
-    color: #6b7090;
+    color: var(--text-dim);
     letter-spacing: 0.5px;
     text-transform: uppercase;
   }
@@ -1064,12 +1273,12 @@
   .winner-score-divider {
     width: 1px;
     height: 36px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--divider);
   }
 
   .winner-moves {
     font-size: 0.85rem;
-    color: #6b7090;
+    color: var(--text-dim);
     margin: 0 0 16px;
   }
 
@@ -1095,16 +1304,16 @@
 
   .winner-restart:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(110, 231, 183, 0.3);
+    box-shadow: 0 6px 20px rgba(110, 231, 183, 0.35);
   }
 
   .winner-menu {
     padding: 10px 32px;
     font-size: 0.88rem;
     font-weight: 600;
-    color: #c2c5e0;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1.5px solid var(--border);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -1112,8 +1321,8 @@
   }
 
   .winner-menu:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: var(--surface-hover);
+    border-color: var(--border-hover);
   }
 
   /* ── Responsive ── */
@@ -1182,12 +1391,16 @@
     }
 
     .menu-header .title {
-      font-size: 2.2rem;
+      font-size: 2.4rem;
     }
 
     .menu-card {
       width: 100%;
       max-width: 300px;
+    }
+
+    .bg-orb {
+      display: none;
     }
   }
 
