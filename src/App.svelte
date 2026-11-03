@@ -94,9 +94,11 @@
   let player1Label = $derived(gameMode === 'single' ? 'Du' : 'Spieler 1');
   let player2Label = $derived(gameMode === 'single' ? 'Computer' : 'Spieler 2');
 
-  // AI imperfection: chance to forget a card, chance to ignore a known match
-  const AI_FORGET_CHANCE = 0.2;
-  const AI_MISTAKE_CHANCE = 0.25;
+  // AI imperfection: chance to forget a seen card, chance to misremember it,
+  // and chance to ignore a known match
+  const AI_FORGET_CHANCE = 0.35;
+  const AI_MISREMEMBER_CHANCE = 0.2;
+  const AI_MISTAKE_CHANCE = 0.3;
 
   function startGame(mode: GameMode) {
     gameMode = mode;
@@ -109,9 +111,15 @@
     card.flipped = true;
     selectedCards = [...selectedCards, card];
 
-    // Computer learns every card that gets flipped, but sometimes forgets
+    // Computer learns every card that gets flipped, but sometimes forgets or misremembers
     if (gameMode === 'single') {
-      if (Math.random() > AI_FORGET_CHANCE) {
+      const roll = Math.random();
+      if (roll < AI_FORGET_CHANCE) {
+        // forget it entirely
+      } else if (roll < AI_FORGET_CHANCE + AI_MISREMEMBER_CHANCE) {
+        aiMemory.set(card.id, baseEmojis[Math.floor(Math.random() * baseEmojis.length)]);
+        aiMemory = new Map(aiMemory);
+      } else {
         aiMemory.set(card.id, card.name);
         aiMemory = new Map(aiMemory);
       }
@@ -159,6 +167,13 @@
 
     const unmatched = cards.filter((c) => !c.matched && !c.flipped);
     if (unmatched.length < 2) return;
+
+    // Occasionally lose a random remembered card between turns
+    if (aiMemory.size > 0 && Math.random() < AI_FORGET_CHANCE) {
+      const keys = Array.from(aiMemory.keys());
+      aiMemory.delete(keys[Math.floor(Math.random() * keys.length)]);
+      aiMemory = new Map(aiMemory);
+    }
 
     // Group all known unmatched cards by emoji
     const knownByEmoji = new Map<string, Card[]>();
@@ -299,7 +314,7 @@
       <button class="menu-card single" onclick={() => startGame('single')}>
         <div class="menu-icon">🤖</div>
         <h2 class="menu-title">Einzelspieler</h2>
-        <p class="menu-desc">Spiele gegen den Computer</p>
+        <p class="menu-desc">Spiele gegen den Computer<br><span class="menu-hint">Der Computer macht auch Fehler</span></p>
       </button>
 
       <button class="menu-card multi" onclick={() => startGame('multi')}>
@@ -546,6 +561,13 @@
     font-size: 0.88rem;
     color: #8b90b0;
     margin: 0;
+    text-align: center;
+  }
+
+  .menu-hint {
+    font-size: 0.75rem;
+    color: #6b7090;
+    font-style: italic;
   }
 
   /* ── Game Container ── */
