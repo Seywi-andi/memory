@@ -387,7 +387,7 @@
   });
 </script>
 
-<div class="app" class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'} class:card-style-{cardStyle}>
+<div class="app card-style-{cardStyle}" class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'}>
   <div class="toggle-group">
     <button class="theme-toggle" onclick={toggleCardStyle} aria-label="Kartendesign umschalten" title="Kartendesign: {cardStyle}">
       <span class="card-style-icon">{cardStyleIcons[cardStyle]}</span>
