@@ -20,20 +20,11 @@
     stripes: 'Streifen',
   };
 
-  type CardSet = 'food' | 'animals' | 'space' | 'symbols';
-  const cardSetOrder: CardSet[] = ['food', 'animals', 'space', 'symbols'];
-  const cardSetLabels: Record<CardSet, string> = {
-    food: 'Essen',
-    animals: 'Tiere',
-    space: 'Weltraum',
-    symbols: 'Symbole',
-  };
-  const cardSetEmojis: Record<CardSet, string[]> = {
-    food: ['🍎','🍌','🍕','🍔','🍩','🍪','🍰','🍓','🍇','🥐','🧀','🌮','🥗','🍜','🍦','🧁','🍫','🍿','🥑','🍒','🥨','🌭','🥪','🧇'],
-    animals: ['🐱','🐶','🐰','🐼','🦊','🐙','🦋','🐢','🦄','🐝','🦁','🐸','🐧','🐨','🦉','🐬','🦓','🐘','🦒','🦏','🦈','🦂','🦖','🦔'],
-    space: ['🚀','🌟','⭐','🌙','☄️','🪐','🌌','🌠','🌍','🌕','🌞','🛸','👽','🔭','🛰️','🌑','🌖','🌗','🌘','💫','🌑','✨','🌟','☄️'],
-    symbols: ['💎','🎯','🍀','🔥','⚡','🌈','👑','🎵','🎲','🎈','🎨','🔮','⚔️','🛡️','🎭','🗝️','🏆','💖','✨','🌀','💠','🎪','🔔','🌟'],
-  };
+  const baseEmojis = [
+    '🍎', '🍌', '🍕', '🚀', '🐱', '🎸', '⚽', '📚',
+    '🌈', '🐙', '🔥', '🎯', '💎', '🦋', '🍀', '🌊',
+    '⚡', '🍩', '👑', '🎲', '🌸', '🧩', '🎈', '🍍',
+  ];
 
   const difficultyConfig: Record<Difficulty, {
     pairs: number; cols: number; label: string; icon: string; desc: string;
@@ -46,8 +37,7 @@
   };
 
   function createCards(pairCount: number = 12): Card[] {
-    const pool = cardSetEmojis[cardSet];
-    const selected = pool.slice(0, pairCount);
+    const selected = baseEmojis.slice(0, pairCount);
     const duplicated = [...selected, ...selected];
     return duplicated
       .map((name, index) => ({ id: index, name, flipped: false, matched: false }))
@@ -57,7 +47,6 @@
   const STORAGE_KEY = 'memory-game-state';
   const THEME_KEY = 'memory-game-theme';
   const CARDSTYLE_KEY = 'memory-game-cardstyle';
-  const CARDSET_KEY = 'memory-game-cardset';
 
   type SavedState = {
     gameMode: GameMode;
@@ -131,16 +120,6 @@
     return 'classic';
   }
 
-  function loadCardSet(): CardSet {
-    try {
-      const s = localStorage.getItem(CARDSET_KEY) as CardSet | null;
-      if (s && cardSetOrder.includes(s)) return s;
-    } catch {
-      // ignore
-    }
-    return 'food';
-  }
-
   const saved = loadState();
 
   let gameMode = $state<GameMode>(saved?.gameMode ?? 'menu');
@@ -159,7 +138,6 @@
 
   let theme = $state<Theme>(loadTheme());
   let cardStyle = $state<CardStyle>(loadCardStyle());
-  let cardSet = $state<CardSet>(loadCardSet());
 
   function toggleTheme() {
     theme = theme === 'dark' ? 'light' : 'dark';
@@ -175,17 +153,6 @@
     cardStyle = cardStyleOrder[(idx + 1) % cardStyleOrder.length];
     try {
       localStorage.setItem(CARDSTYLE_KEY, cardStyle);
-    } catch {
-      // ignore
-    }
-  }
-
-  function toggleCardSet() {
-    const idx = cardSetOrder.indexOf(cardSet);
-    cardSet = cardSetOrder[(idx + 1) % cardSetOrder.length];
-    if (gameMode !== 'menu') restartGame();
-    try {
-      localStorage.setItem(CARDSET_KEY, cardSet);
     } catch {
       // ignore
     }
@@ -422,19 +389,15 @@
 
 <div class="app" data-card-style={cardStyle} class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'}>
   <div class="toggle-group">
+    <button class="style-toggle" onclick={toggleCardStyle} aria-label="Kartendesign umschalten" title="Kartendesign: {cardStyleLabels[cardStyle]}">
+      <span class="style-toggle-inner">🎴</span>
+      <span class="style-toggle-label">{cardStyleLabels[cardStyle]}</span>
+    </button>
     <button class="theme-toggle" onclick={toggleTheme} aria-label="Design umschalten" title="Design umschalten">
       <span class="theme-icon" class:show-sun={theme === 'dark'}>
         <span class="icon-sun">☀️</span>
         <span class="icon-moon">🌙</span>
       </span>
-    </button>
-    <button class="style-toggle" onclick={toggleCardStyle} aria-label="Kartendesign umschalten" title="Kartendesign: {cardStyleLabels[cardStyle]}">
-      <span class="style-toggle-inner">🎴</span>
-      <span class="style-toggle-label">{cardStyleLabels[cardStyle]}</span>
-    </button>
-    <button class="style-toggle" onclick={toggleCardSet} aria-label="Kartensymbole umschalten" title="Symbole: {cardSetLabels[cardSet]}">
-      <span class="style-toggle-inner">🎨</span>
-      <span class="style-toggle-label">{cardSetLabels[cardSet]}</span>
     </button>
   </div>
 
@@ -747,9 +710,8 @@
     right: 18px;
     z-index: 300;
     display: flex;
-    flex-direction: column;
     gap: 8px;
-    align-items: flex-end;
+    align-items: center;
   }
 
   .style-toggle {
