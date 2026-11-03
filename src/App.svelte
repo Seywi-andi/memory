@@ -11,6 +11,7 @@
   type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
   type MenuStep = 'mode' | 'difficulty';
   type CardStyle = 'classic' | 'dots' | 'waves' | 'stripes' | 'grid' | 'swirl';
+  type EmojiStyle = 'classic' | 'bubble' | 'neon' | 'soft';
 
   const cardStyleOrder: CardStyle[] = ['classic', 'dots', 'waves', 'stripes', 'grid', 'swirl'];
   const cardStyleLabels: Record<CardStyle, string> = {
@@ -20,6 +21,13 @@
     stripes: 'Streifen',
     grid: 'Gitter',
     swirl: 'Spirale',
+  };
+  const emojiStyleOrder: EmojiStyle[] = ['classic', 'bubble', 'neon', 'soft'];
+  const emojiStyleLabels: Record<EmojiStyle, string> = {
+    classic: 'Klassisch',
+    bubble: 'Blase',
+    neon: 'Neon',
+    soft: 'Sanft',
   };
 
   const baseEmojis = [
@@ -49,6 +57,7 @@
   const STORAGE_KEY = 'memory-game-state';
   const THEME_KEY = 'memory-game-theme';
   const CARDSTYLE_KEY = 'memory-game-cardstyle';
+  const EMOJISTYLE_KEY = 'memory-game-emojistyle';
 
   type SavedState = {
     gameMode: GameMode;
@@ -122,6 +131,16 @@
     return 'classic';
   }
 
+  function loadEmojiStyle(): EmojiStyle {
+    try {
+      const s = localStorage.getItem(EMOJISTYLE_KEY) as EmojiStyle | null;
+      if (s && emojiStyleOrder.includes(s)) return s;
+    } catch {
+      // ignore
+    }
+    return 'classic';
+  }
+
   const saved = loadState();
 
   let gameMode = $state<GameMode>(saved?.gameMode ?? 'menu');
@@ -140,6 +159,7 @@
 
   let theme = $state<Theme>(loadTheme());
   let cardStyle = $state<CardStyle>(loadCardStyle());
+  let emojiStyle = $state<EmojiStyle>(loadEmojiStyle());
 
   function toggleTheme() {
     theme = theme === 'dark' ? 'light' : 'dark';
@@ -155,6 +175,16 @@
     cardStyle = cardStyleOrder[(idx + 1) % cardStyleOrder.length];
     try {
       localStorage.setItem(CARDSTYLE_KEY, cardStyle);
+    } catch {
+      // ignore
+    }
+  }
+
+  function toggleEmojiStyle() {
+    const idx = emojiStyleOrder.indexOf(emojiStyle);
+    emojiStyle = emojiStyleOrder[(idx + 1) % emojiStyleOrder.length];
+    try {
+      localStorage.setItem(EMOJISTYLE_KEY, emojiStyle);
     } catch {
       // ignore
     }
@@ -389,7 +419,7 @@
   });
 </script>
 
-<div class="app" data-card-style={cardStyle} class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'}>
+<div class="app" data-card-style={cardStyle} data-emoji-style={emojiStyle} class:theme-dark={theme === 'dark'} class:theme-light={theme === 'light'}>
   <div class="toggle-group">
     <button class="theme-toggle" onclick={toggleTheme} aria-label="Design umschalten" title="Design umschalten">
       <span class="theme-icon" class:show-sun={theme === 'dark'}>
@@ -400,6 +430,10 @@
     <button class="style-toggle" onclick={toggleCardStyle} aria-label="Kartendesign umschalten" title="Kartendesign: {cardStyleLabels[cardStyle]}">
       <span class="style-toggle-inner">🎴</span>
       <span class="style-toggle-label">{cardStyleLabels[cardStyle]}</span>
+    </button>
+    <button class="style-toggle" onclick={toggleEmojiStyle} aria-label="Emoji-Stil umschalten" title="Emoji-Stil: {emojiStyleLabels[emojiStyle]}">
+      <span class="style-toggle-inner">✨</span>
+      <span class="style-toggle-label">{emojiStyleLabels[emojiStyle]}</span>
     </button>
   </div>
 
@@ -1522,6 +1556,33 @@
     font-size: calc(var(--card-size) * 0.52);
     line-height: 1;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    transition: transform 0.3s ease, filter 0.3s ease;
+  }
+
+  .app[data-emoji-style='bubble'] .emoji {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--card-size) * 0.62);
+    height: calc(var(--card-size) * 0.62);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: inset 0 1px 8px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.16);
+    transform: scale(0.92);
+  }
+
+  .app[data-emoji-style='neon'] .emoji {
+    filter: drop-shadow(0 0 4px rgba(110, 231, 183, 0.9)) drop-shadow(0 0 12px rgba(96, 165, 250, 0.7));
+    transform: scale(1.05);
+  }
+
+  .app[data-emoji-style='soft'] .emoji {
+    filter: grayscale(0.15) saturate(0.8) drop-shadow(0 5px 5px rgba(0, 0, 0, 0.18));
+    transform: scale(0.95);
+  }
+
+  .card:not(:disabled):hover .emoji {
+    transform: scale(1.08);
   }
 
   .card.matched .card-front {
